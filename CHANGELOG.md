@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.10
+
+- Set User Agent in network calls, and fix JSON parse error when response is not successful.
+
 ## 0.0.9
 
 - Fixed NaN passed to setTimeout causing a warning to show in the console.
