@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.11
+
+- Fixed User Agent not properly set in the preflight call, triggering attack detection.
+
 ## 0.0.10
 
 - Set User Agent in network calls, and fix JSON parse error when response is not successful.
