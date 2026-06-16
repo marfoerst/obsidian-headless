@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.12
+
+- Add `publish-site-options` command back, which was accidentally removed in 0.0.9.
+
 ## 0.0.11
 
 - Fixed User Agent not properly set in the preflight call, triggering attack detection.
