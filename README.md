@@ -59,11 +59,11 @@ Logout and clear stored credentials.
 
 ### `ob sync-list-remote`
 
-List all remote vaults available to your account, including shared vaults.
+List all remote vaults available to your account, including shared vaults. Pass `--json` for machine-readable output.
 
 ### `ob sync-list-local`
 
-List locally configured vaults and their paths.
+List locally configured vaults and their paths. Pass `--json` for machine-readable output.
 
 ### `ob sync-create-remote`
 
@@ -101,13 +101,14 @@ ob sync-setup --vault <id-or-name> [--path <local-path>] [--password <password>]
 Run sync for a configured vault.
 
 ```
-ob sync [--path <local-path>] [--continuous]
+ob sync [--path <local-path>] [--continuous] [--rescan <seconds>]
 ```
 
 | Option | Description |
 |---|---|
 | `--path` | Local vault path (default: current directory) |
 | `--continuous` | Run continuously, watching for changes |
+| `--rescan <seconds>` | In continuous mode, re-scan the whole vault every N seconds. Disabled by default. See [Continuous sync and linked files](#continuous-sync-and-linked-files). |
 
 ### `ob sync-config`
 
@@ -126,16 +127,27 @@ Run with no options to display the current configuration.
 | `--conflict-strategy` | `merge` or `conflict` |
 | `--file-types` | Attachment types to sync: `image`, `audio`, `video`, `pdf`, `unsupported` (comma-separated, empty to clear) |
 | `--configs` | Config categories to sync: `app`, `appearance`, `appearance-data`, `hotkey`, `core-plugin`, `core-plugin-data`, `community-plugin`, `community-plugin-data` (comma-separated, empty to disable config syncing) |
-| `--excluded-folders` | Folders to exclude (comma-separated, empty to clear) |
+| `--excluded-folders` | Folders to exclude (comma-separated, empty to clear). Mutually exclusive with `--included-folders`. |
+| `--included-folders` | Sync *only* these folders and their subfolders; everything else is excluded (comma-separated, empty to clear). Mutually exclusive with `--excluded-folders`. The config directory is unaffected (controlled by `--configs`). |
 | `--device-name` | Device name to identify this client in the sync version history |
 | `--config-dir` | Config directory name (default: `.obsidian`) |
 
+> **Note on changing `--file-types` scope on a bidirectional vault.** Widening the file-type
+> scope (e.g. enabling `unsupported`) downloads the newly-in-scope remote files rather than
+> deleting them. If you are on an older version, or want to be safe, pull first:
+>
+> ```bash
+> ob sync-config --path /vault --mode pull-only --file-types image,audio,video,pdf,unsupported
+> ob sync --path /vault          # downloads the newly-in-scope files
+> ob sync-config --path /vault --mode bidirectional
+> ```
+
 ### `ob sync-status`
 
-Show sync status and configuration for a vault.
+Show sync status and configuration for a vault. Pass `--json` for machine-readable output.
 
 ```
-ob sync-status [--path <local-path>]
+ob sync-status [--path <local-path>] [--json]
 ```
 
 ### `ob sync-unlink`
@@ -244,6 +256,62 @@ Disconnect a vault from a publish site.
 ```
 ob publish-unlink [--path <local-path>]
 ```
+
+## Continuous sync and linked files
+
+`ob sync --continuous` uses the operating system's filesystem watcher to react to
+changes. The watcher notifies on directory-entry changes within the vault, so it
+reliably picks up edits to normal files, as well as edits made *through* a symlink
+or hardlink that lives inside the vault.
+
+It does **not** get notified when a **hardlink target is edited from outside the
+vault** (the change happens on the underlying inode, not via a vault directory
+entry), and symlink *targets* outside the vault are likewise not watched. A
+one-shot `ob sync` still catches these, because it walks the whole vault and
+compares modification times.
+
+If you rely on external edits to linked files reaching a long-running continuous
+sync, enable periodic re-scanning:
+
+```bash
+# Re-scan the whole vault every 60 seconds in addition to live watching
+ob sync --continuous --rescan 60
+```
+
+The re-scan compares modification times and picks up anything the live watcher
+missed. Use a larger interval for big vaults to keep the extra I/O low.
+
+## JSON output
+
+`sync-list-local`, `sync-list-remote`, and `sync-status` accept a `--json` flag
+that emits machine-readable JSON on stdout instead of the human-formatted output,
+which is convenient for scripting. On error, a JSON object with an `error` field
+is printed to stderr and the process exits non-zero.
+
+```bash
+ob sync-list-local --json
+ob sync-status --path ~/vaults/my-vault --json
+```
+
+## Docker
+
+A `Dockerfile` and `docker-compose.yml` are included for running continuous sync
+in a container (e.g. on a NAS or home server). Because Linux does not support
+setting file creation times, the `btime` native addon is simply skipped in the
+container and sync works normally.
+
+```bash
+# First-time interactive setup (persists to the ./obsidian-data volume)
+docker compose run --rm sync ob login
+docker compose run --rm sync ob sync-setup --vault "My Vault"
+
+# Start the long-lived continuous sync service
+docker compose up -d
+```
+
+Mount your vault at `/vault` and a persistent config volume at `/data`. The
+compose file sets a `stop_grace_period` so the container shuts down gracefully on
+`docker stop`.
 
 ## Native modules
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Fixed widening `--file-types` scope on a bidirectional vault deleting the newly-in-scope remote files; they are now downloaded instead (#38, #19, #28).
+- Added a safety check so remote files/folders are never deleted while the file still exists locally, preventing spurious deletions from watcher races and freshly-downloaded files (#19, #28).
+- Fixed `ob sync --continuous` hanging forever at "Connecting..." by adding a 30-second timeout to the websocket connect, letting the retry/backoff logic recover (#41, #26).
+- Fixed `ob sync --continuous` not shutting down on SIGTERM/SIGINT (previously required SIGKILL after a 90s timeout) (#25).
+- Fixed `verify() lock` failing on exFAT and other filesystems with coarse timestamp resolution by using a tolerance instead of strict equality (#16, subsumes #9).
+- Added a clear error message when run on Node.js older than 22, instead of a cryptic `ReferenceError: crypto is not defined` (#35).
+- Added `--included-folders` to `sync-config` for selective folder syncing; mutually exclusive with `--excluded-folders` (#37).
+- Added `--json` output mode to `sync-list-local`, `sync-list-remote`, and `sync-status` (#6).
+- Added `--rescan <seconds>` to `ob sync` to periodically re-scan the vault in continuous mode, catching changes the filesystem watcher misses such as edits to hard-link targets (#18).
+- Added a `Dockerfile` and `docker-compose.yml` for running continuous sync in a container (#2).
+- Documented the `btime` native addon's purpose, interface, and platform calls (#7).
+
 ## 0.0.12
 
 - Add `publish-site-options` command back, which was accidentally removed in 0.0.9.

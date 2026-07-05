@@ -1,0 +1,29 @@
+# Continuous Obsidian Sync in a container.
+#
+# First-time setup (interactive), run these once with the data volume mounted:
+#   docker compose run --rm sync ob login
+#   docker compose run --rm sync ob sync-setup --vault "My Vault"
+#
+# Then start the long-lived sync service:
+#   docker compose up -d
+#
+# Config and credentials persist in the ./obsidian-data volume; your vault
+# files live in ./vault.
+
+services:
+  sync:
+    build:
+      context: .
+      # Build from the published npm package. To build from this checkout,
+      # set SOURCE=local.
+      args:
+        SOURCE: npm
+        VERSION: latest
+    image: obsidian-headless
+    # Let the process receive SIGTERM and shut down gracefully (issue #25).
+    stop_grace_period: 30s
+    restart: unless-stopped
+    volumes:
+      - ./obsidian-data:/data
+      - ./vault:/vault
+    command: ["ob", "sync", "--continuous"]
